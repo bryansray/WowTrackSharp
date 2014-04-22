@@ -1,0 +1,22 @@
+﻿@model LootTrack.Domain.Models.Character
+@{
+    ViewBag.Title = Model.Name;
+}
+
+<div class="btn-group pull-right">
+    @using (Html.BeginForm("Update", "Characters", new {Model.Id}))
+    {
+        @Html.HttpMethodOverride(HttpVerbs.Put)
+        <button class="btn btn-default pull-right" type="submit">Update</button>
+    }
+   
+    <div class="clearfix"></div>
+</div>
+
+<h3><span class="@Model.Class.Code" id="character" data-characterid="@Model.Id">@Model.Name</span> (<span class="equippedItemLevel">@Model.EquippedItemLevel</span>)</h3>
+@if (@Model.UpdatedAt.HasValue) 
+{
+    <p class="text-right">Last Updated: @Model.UpdatedAt.Value.ToString("MM/dd/yyy hh:mm tt")</p>
+}
+
+<div id="lootsGrid"></div>

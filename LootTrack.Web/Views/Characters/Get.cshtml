@@ -1,0 +1,18 @@
+﻿@using LootTrack.Domain.Models
+@model IEnumerable<IGrouping<string, Character>>
+@{
+    Layout = null;
+}
+
+<ul class="list-group">
+    @foreach (var characterClass in Model)
+    {
+        foreach (var character in characterClass)
+         {
+             <li class="list-group-item">
+                 <span class="badge">@character.EquippedItemLevel</span>
+                 @Html.ActionLink(character.Name, "Details", "Characters", new { id = character.Id }, new { @class = character.Class.Code })
+             </li>
+         }
+    }
+</ul>
