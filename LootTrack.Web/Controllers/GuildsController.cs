@@ -4,17 +4,24 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using LootTrack.Domain.Models;
+using LootTrack.Web.Foundation.Extensions;
 using Repository.Pattern.Repositories;
+using Repository.Pattern.UnitOfWork;
+using WowDotNetAPI;
 
 namespace LootTrack.Web.Controllers
 {
     public class GuildsController : Controller
     {
         private readonly IRepository<Guild> _guildRepository;
+        private readonly IRepository<Item> _itemRepository;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public GuildsController(IRepository<Guild> guildRepository)
+        public GuildsController(IRepository<Guild> guildRepository, IRepository<Item> itemRepository, IUnitOfWork unitOfWork)
         {
             _guildRepository = guildRepository;
+            _itemRepository = itemRepository;
+            _unitOfWork = unitOfWork;
         }
 
         //
@@ -71,8 +78,38 @@ namespace LootTrack.Web.Controllers
         {
             try
             {
-                // TODO: Add update logic here
+                _unitOfWork.BeginTransaction();
+                var guild = _guildRepository.Query(x => x.Id == id).Include(x => x.Characters).Select().FirstOrDefault();
 
+                var client = new WowExplorer(Region.US);
+
+                var apiGuild = client.GetGuild("Greymane", "Solution", GuildOptions.GetNews);
+
+                foreach (var element in apiGuild.News.Where(x => x.Type.ToUpper() == "ITEMLOOT"))
+                {
+                    var itemId = element.ItemID;
+                    var characterName = element.Character;
+
+                    if (!guild.Characters.Any(x => x.Name == characterName)) continue;
+
+                    var item = _itemRepository.Query(x => x.ItemId == itemId).Select().FirstOrDefault();
+
+                    if (item == null)
+                    {
+                        var apiItem = client.GetItem(itemId.ToString());
+                        item = new Item(apiItem.Name, apiItem.Id, apiItem.ItemLevel, apiItem.Quality);
+                        _itemRepository.Insert(item);
+                    }
+
+                    var character = guild.Characters.FirstOrDefault(x => x.Name == characterName);
+
+                    character.AddLoot(item, element.Timestamp.ToDateTime(), false);
+
+                    
+                }
+
+                _unitOfWork.SaveChanges();
+                _unitOfWork.Commit();
                 return RedirectToAction("Index");
             }
             catch
